@@ -44,6 +44,10 @@ async function updateHubspot(rate) {
     const { rate, date } = extractRate(csv);
     await updateHubspot(rate);
   } catch (err) {
-    console.error('❌ Error:', err.message);
+    console.error("❌ HubSpot update failed:", {
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message
+    });
   }
 })();
