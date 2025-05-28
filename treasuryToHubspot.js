@@ -3,7 +3,7 @@ const Papa = require('papaparse');
 
 const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN;
 const CONTACT_ID = process.env.CONTACT_ID;
-const PROPERTY_NAME = 'latest_treasury_rate';
+const PROPERTY_NAME = 'current_treasury_rate';
 
 async function fetchCSV() {
   const url = 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2025/all?type=daily_treasury_yield_curve&field_tdr_date_value=2025&page&_format=csv';
