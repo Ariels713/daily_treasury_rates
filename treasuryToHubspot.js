@@ -38,10 +38,11 @@ async function updateHubDB(rate, date) {
     // Update the first row
     const rowId = rows[0].id;
     const updateUrl = `${url}/${rowId}`;
+    // HubDB API requires column IDs as numeric strings for the keys
     const payload = {
       values: {
-        [PROPERTY_NAME]: rate,
-        date: date
+        '1': rate,
+        '2': date
       }
     };
 
@@ -49,10 +50,11 @@ async function updateHubDB(rate, date) {
     console.log(`✅ Updated HubDB row ${rowId}: ${PROPERTY_NAME} = ${rate}, date = ${date}`);
   } else {
     // Create a new row
+    // HubDB API requires column IDs as numeric strings for the keys
     const payload = {
       values: {
-        [PROPERTY_NAME]: rate,
-        date: date
+        '1': rate,
+        '2': date
       }
     };
 
