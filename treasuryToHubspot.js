@@ -17,7 +17,7 @@ function extractRate(csvText) {
   const threeMonth = parseFloat(latest[3]);
   return {
     rate: `${threeMonth.toFixed(2)}%`,
-    date: latest[0]
+    date: new Date(latest[0]).getTime()
   };
 }
 
