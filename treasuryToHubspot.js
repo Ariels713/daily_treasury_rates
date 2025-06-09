@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Papa = require('papaparse');
+const cheerio = require('cheerio');
 
 const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN;
 const CONTACT_ID = process.env.CONTACT_ID;
@@ -21,7 +22,27 @@ function extractRate(csvText) {
   };
 }
 
-async function updateHubDB(rate, date) {
+async function fetchMs7DayRate() {
+  const url = 'https://www.morganstanley.com/im/en-us/individual-investor/product-and-performance/mutual-funds/taxable-fixed-income/ultra-short-income-portfolio.shareClass.IR.html';
+  const { data } = await axios.get(url);
+  const $ = cheerio.load(data);
+
+  let rate = null;
+
+  // Find the table row with the label and get the next cell's text
+  $('tr').each((i, el) => {
+    const label = $(el).find('td.name').text().trim();
+    if (label.startsWith('7-Day Current Yield Subsidized')) {
+      rate = $(el).find('td.data').text().trim();
+      return false; // break loop
+    }
+  });
+
+  if (!rate) throw new Error('7-day subsidized yield not found!');
+  return rate;
+}
+
+async function updateHubDB(rate, date, ms7DayRate) {
   const tableId = '119957807';
   const url = `https://api.hubapi.com/hubdb/api/v2/tables/${tableId}/rows`;
 
@@ -30,36 +51,25 @@ async function updateHubDB(rate, date) {
     'Content-Type': 'application/json'
   };
 
-  // First, check if there are any rows in the table
   const getRes = await axios.get(url, { headers });
   const rows = getRes.data.objects;
 
+  const payload = {
+    values: {
+      '1': rate,
+      '2': date,
+      '3': ms7DayRate // Make sure '3' matches your new column ID in HubDB
+    }
+  };
+
   if (rows.length > 0) {
-    // Update the first row
     const rowId = rows[0].id;
     const updateUrl = `${url}/${rowId}`;
-    // HubDB API requires column IDs as numeric strings for the keys
-    const payload = {
-      values: {
-        '1': rate,
-        '2': date
-      }
-    };
-
     await axios.patch(updateUrl, payload, { headers });
-    console.log(`✅ Updated HubDB row ${rowId}: ${PROPERTY_NAME} = ${rate}, date = ${date}`);
+    console.log(`✅ Updated HubDB row ${rowId}: rate = ${rate}, date = ${date}, ms_7_day_rate = ${ms7DayRate}`);
   } else {
-    // Create a new row
-    // HubDB API requires column IDs as numeric strings for the keys
-    const payload = {
-      values: {
-        '1': rate,
-        '2': date
-      }
-    };
-
     const createRes = await axios.post(url, payload, { headers });
-    console.log(`✅ Created new HubDB row ${createRes.data.id}: ${PROPERTY_NAME} = ${rate}, date = ${date}`);
+    console.log(`✅ Created new HubDB row ${createRes.data.id}: rate = ${rate}, date = ${date}, ms_7_day_rate = ${ms7DayRate}`);
   }
 }
 
@@ -67,7 +77,8 @@ async function updateHubDB(rate, date) {
   try {
     const csv = await fetchCSV();
     const { rate, date } = extractRate(csv);
-    await updateHubDB(rate, date);
+    const ms7DayRate = await fetchMs7DayRate();
+    await updateHubDB(rate, date, ms7DayRate);
   } catch (err) {
     console.error("❌ HubSpot update failed:", {
       status: err.response?.status,
